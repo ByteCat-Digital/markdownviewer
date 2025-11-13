@@ -12,6 +12,7 @@ Lean Electron + React desktop app for browsing local or remote Markdown (includi
   - Markdown links open inside the app (resolving local files or remote URLs, including relative paths).
   - Other internet links launch in the default browser.
 - Command-line files/URLs open automatically at launch; additional invocations reuse the same window.
+- Print the active document (to paper or PDF) via File → Print or the toolbar button.
 
 ## Getting started
 
@@ -44,6 +45,18 @@ npm run dist
 ```
 
 Run the packaging command on the corresponding OS (or via CI runners) so signing/notarization can take place.
+
+### Versioning
+
+Use npm's built-in versioning helpers (wrapped in scripts):
+
+```bash
+npm run release:patch   # 1.0.0 -> 1.0.1
+npm run release:minor   # 1.0.0 -> 1.1.0
+npm run release:major   # 1.0.0 -> 2.0.0
+```
+
+Each command bumps `package.json`, creates a git tag, and keeps the UI/About dialog in sync automatically.
 
 ## Project structure
 

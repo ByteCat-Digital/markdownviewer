@@ -3,7 +3,8 @@ import type {
   ContextMenuPayload,
   LinkFollowPayload,
   MarkdownResource,
-  MermaidZoomMessage
+  MermaidZoomMessage,
+  PrintPayload
 } from '@common/types';
 
 const api = {
@@ -13,6 +14,8 @@ const api = {
     ipcRenderer.invoke('resource:open-reference', payload),
   openExternal: (url: string) => ipcRenderer.invoke('link:external', url),
   showContextMenu: (payload: ContextMenuPayload) => ipcRenderer.invoke('context-menu', payload),
+  getAppVersion: (): Promise<string> => ipcRenderer.invoke('app:get-version'),
+  printDocument: (payload: PrintPayload) => ipcRenderer.invoke('print-document', payload),
   onResourceOpened: (callback: (resource: MarkdownResource) => void) => {
     const listener = (_event: Electron.IpcRendererEvent, resource: MarkdownResource) => callback(resource);
     ipcRenderer.on('resource-opened', listener);
@@ -27,6 +30,11 @@ const api = {
     const listener = (_event: Electron.IpcRendererEvent, payload: MermaidZoomMessage) => callback(payload);
     ipcRenderer.on('mermaid-zoom', listener);
     return () => ipcRenderer.removeListener('mermaid-zoom', listener);
+  },
+  onPrintRequest: (callback: () => void) => {
+    const listener = () => callback();
+    ipcRenderer.on('request-print', listener);
+    return () => ipcRenderer.removeListener('request-print', listener);
   },
   signalReady: () => ipcRenderer.send('renderer-ready')
 };

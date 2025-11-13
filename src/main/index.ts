@@ -9,6 +9,7 @@ import {
   type MenuItemConstructorOptions
 } from 'electron';
 import { readFile } from 'node:fs/promises';
+import { readFileSync, existsSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { randomUUID } from 'node:crypto';
@@ -16,12 +17,53 @@ import type {
   ContextMenuPayload,
   LinkFollowPayload,
   MarkdownResource,
-  MermaidZoomDirection
+  MermaidZoomDirection,
+  PrintPayload
 } from '@common/types';
 
 const isDev = !app.isPackaged;
 const markdownExtensions = ['.md', '.markdown', '.mdown', '.mkdn', '.mkd', '.mdx'];
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const websiteUrl = 'https://www.bytecat.co.za';
+const githubUrl = 'https://github.com/ByteCat-Digital';
+const printStyles = `
+  :root { color-scheme: light; }
+  body {
+    font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+    margin: 40px;
+    color: #0f172a;
+    background: #ffffff;
+  }
+  h1 {
+    margin-top: 0;
+    font-size: 1.6rem;
+  }
+  article {
+    line-height: 1.6;
+  }
+  pre {
+    background: #f3f4f6;
+    padding: 0.85rem;
+    border-radius: 8px;
+    overflow: auto;
+  }
+  code {
+    font-family: "JetBrains Mono", Menlo, monospace;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 1rem 0;
+  }
+  th, td {
+    border: 1px solid #cbd5f5;
+    padding: 0.5rem;
+  }
+  .mermaid-block,
+  .mermaid-container {
+    overflow: visible;
+  }
+`;
 
 type ResourceDescriptor = MarkdownResource;
 
@@ -41,6 +83,60 @@ const isMarkdownPath = (target: string) => {
 
 const preloadFile = path.join(__dirname, '../preload/index.cjs');
 const rendererHtml = path.join(__dirname, '../renderer/index.html');
+
+const escapeHtml = (value: string) =>
+  value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+type DependencyNotice = {
+  name: string;
+  version: string;
+  license: string;
+};
+
+function readJsonSafe(target: string) {
+  try {
+    if (!existsSync(target)) return null;
+    return JSON.parse(readFileSync(target, 'utf-8'));
+  } catch {
+    return null;
+  }
+}
+
+function loadDependencyNotices(): DependencyNotice[] {
+  try {
+    const pkgPath = path.join(app.getAppPath(), 'package.json');
+    const pkgJson = readJsonSafe(pkgPath);
+    const dependencies = pkgJson?.dependencies ?? {};
+    const names = Object.keys(dependencies);
+    const notices: DependencyNotice[] = [];
+    for (const name of names) {
+      const candidatePaths = [
+        path.join(app.getAppPath(), 'node_modules', name, 'package.json'),
+        path.join(process.cwd(), 'node_modules', name, 'package.json')
+      ];
+      let depJson: any = null;
+      for (const candidate of candidatePaths) {
+        depJson = readJsonSafe(candidate);
+        if (depJson) break;
+      }
+      notices.push({
+        name,
+        version: depJson?.version ?? dependencies[name] ?? 'unknown',
+        license: depJson?.license ?? 'unknown'
+      });
+    }
+    return notices;
+  } catch {
+    return [];
+  }
+}
+
+function dependencyAcknowledgements() {
+  const dependencyNotices = loadDependencyNotices();
+  return dependencyNotices.length > 0
+    ? dependencyNotices.map((dep) => `• ${dep.name}@${dep.version} (${dep.license})`).join('\n')
+    : 'No external dependencies listed.';
+}
 
 const resolveHtml = () => {
   if (isDev && process.env.VITE_DEV_SERVER_URL) {
@@ -196,6 +292,12 @@ function setupIpc() {
     await shell.openExternal(url);
   });
 
+  ipcMain.handle('app:get-version', () => app.getVersion());
+
+  ipcMain.handle('print-document', async (_event, payload: PrintPayload) => {
+    await printDocument(payload);
+  });
+
   ipcMain.handle('context-menu', (event, payload: ContextMenuPayload) => {
     const targetWindow = BrowserWindow.fromWebContents(event.sender) ?? mainWindow;
     if (!targetWindow) return;
@@ -252,6 +354,94 @@ function sendMermaidZoom(id: string, direction: MermaidZoomDirection) {
   mainWindow.webContents.send('mermaid-zoom', { id, direction });
 }
 
+function requestPrintFromRenderer() {
+  mainWindow?.webContents.send('request-print');
+}
+
+const buildPrintHtml = (payload: PrintPayload) => `<!doctype html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <title>${escapeHtml(payload.title)}</title>
+    <style>${printStyles}</style>
+  </head>
+  <body>
+    <h1>${escapeHtml(payload.title)}</h1>
+    <article>
+      ${payload.html}
+    </article>
+  </body>
+</html>`;
+
+async function printDocument(payload: PrintPayload) {
+  const printWindow = new BrowserWindow({
+    show: false,
+    width: 1024,
+    height: 768,
+    webPreferences: {
+      sandbox: true
+    }
+  });
+
+  try {
+    const htmlContent = buildPrintHtml(payload);
+    await printWindow.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(htmlContent)}`);
+    await new Promise<void>((resolve, reject) => {
+      printWindow.webContents.print(
+        {
+          printBackground: true
+        },
+        (success, errorType) => {
+          if (!success) {
+            reject(new Error(errorType || 'Printing was cancelled or failed'));
+          } else {
+            resolve();
+          }
+        }
+      );
+    });
+  } finally {
+    if (!printWindow.isDestroyed()) {
+      printWindow.close();
+    }
+  }
+}
+
+async function openAboutDialog() {
+  const version = app.getVersion();
+  const detailLines = [
+    `Version ${version}`,
+    websiteUrl,
+    githubUrl,
+    '',
+    'Developed with assistance from OpenAI Codex.',
+    '',
+    'Acknowledgements:',
+    dependencyAcknowledgements(),
+    '',
+    'License: Apache License 2.0'
+  ].join('\n');
+
+  const options: Electron.MessageBoxOptions = {
+    type: 'info',
+    buttons: ['OK', 'Visit Website', 'GitHub'],
+    defaultId: 0,
+    cancelId: 0,
+    title: 'About',
+    message: 'ByteCat Digital (Pty) Ltd Markdown Reader',
+    detail: detailLines
+  } as const;
+  const result = mainWindow
+    ? await dialog.showMessageBox(mainWindow, options)
+    : await dialog.showMessageBox(options);
+  const { response } = result;
+  if (response === 1) {
+    await shell.openExternal(websiteUrl);
+  } else if (response === 2) {
+    await shell.openExternal(githubUrl);
+  }
+}
+
 async function openFilesFromMenu() {
   try {
     const resources = await handleOpenDialog();
@@ -271,7 +461,10 @@ function setupMenu() {
           {
             label: app.name,
             submenu: [
-              { role: 'about' as const },
+              {
+                label: 'About Markdown Viewer',
+                click: () => openAboutDialog().catch(console.error)
+              },
               { type: 'separator' as const },
               { role: 'services' as const },
               { type: 'separator' as const },
@@ -297,6 +490,13 @@ function setupMenu() {
             });
           }
         },
+        {
+          label: 'Print…',
+          accelerator: 'CmdOrCtrl+P',
+          click: () => {
+            requestPrintFromRenderer();
+          }
+        },
         { type: 'separator' as const },
         isMac ? { role: 'close' as const } : { role: 'quit' as const }
       ]
@@ -306,6 +506,23 @@ function setupMenu() {
       submenu: isMac
         ? [{ role: 'minimize' as const }, { role: 'zoom' as const }, { type: 'separator' as const }, { role: 'front' as const }]
         : [{ role: 'minimize' as const }, { role: 'close' as const }]
+    },
+    {
+      label: 'Help',
+      submenu: [
+        {
+          label: 'About Markdown Viewer',
+          click: () => openAboutDialog().catch(console.error)
+        },
+        {
+          label: 'Visit Website',
+          click: () => shell.openExternal(websiteUrl)
+        },
+        {
+          label: 'GitHub',
+          click: () => shell.openExternal(githubUrl)
+        }
+      ]
     }
   ];
 

@@ -31,3 +31,8 @@ export interface MermaidZoomMessage {
   id: string;
   direction: MermaidZoomDirection;
 }
+
+export interface PrintPayload {
+  title: string;
+  html: string;
+}

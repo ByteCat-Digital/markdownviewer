@@ -19,12 +19,14 @@ function normalizeUrl(input: string) {
   return `https://${input}`;
 }
 
+
 export function App() {
   const [tabs, setTabs] = useState<MarkdownResource[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [status, setStatus] = useState<string | null>(null);
   const [urlMode, setUrlMode] = useState(false);
   const [urlValue, setUrlValue] = useState('');
+  const [appVersion, setAppVersion] = useState<string>('');
 
   const activeTab = tabs.find((tab) => tab.id === activeId) ?? tabs[0] ?? null;
 
@@ -170,6 +172,30 @@ export function App() {
     [activeTab, addResource]
   );
 
+  const handlePrint = useCallback(async () => {
+    if (!activeTab) {
+      setStatus('No document available to print.');
+      return;
+    }
+    const pane = document.querySelector('.markdown-pane');
+    if (!(pane instanceof HTMLElement)) {
+      setStatus('Nothing to print.');
+      return;
+    }
+    const html = pane.innerHTML;
+    const title =
+      activeTab.title ||
+      (activeTab.kind === 'file'
+        ? activeTab.path ?? 'Document'
+        : activeTab.finalUrl ?? activeTab.url ?? 'Document');
+    try {
+      await window.api.printDocument({ title, html });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      setStatus(message);
+    }
+  }, [activeTab]);
+
   useEffect(() => {
     const unsubscribe = window.api.onResourceOpened((resource) => addResource(resource));
     const unsubscribeError = window.api.onResourceError((message) => setStatus(message));
@@ -179,6 +205,19 @@ export function App() {
       unsubscribeError();
     };
   }, [addResource]);
+
+  useEffect(() => {
+    let mounted = true;
+    window.api
+      .getAppVersion()
+      .then((version) => {
+        if (mounted) setAppVersion(version);
+      })
+      .catch(() => {});
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   useEffect(() => {
     const handler = (event: MouseEvent) => {
@@ -210,6 +249,18 @@ export function App() {
     window.addEventListener('contextmenu', handler);
     return () => window.removeEventListener('contextmenu', handler);
   }, []);
+
+  useEffect(() => {
+    const unsubscribe = window.api.onPrintRequest(() => {
+      handlePrint().catch((error) => {
+        const message = error instanceof Error ? error.message : String(error);
+        setStatus(message);
+      });
+    });
+    return () => {
+      unsubscribe();
+    };
+  }, [handlePrint]);
 
   const markdownComponents = useMemo<Components>(() => {
     type CodeRendererProps = {
@@ -292,8 +343,9 @@ export function App() {
       <header className="app-toolbar">
         <div className="toolbar-row">
           <div className="toolbar-actions">
-            <button type="button" onClick={handleOpenFile}>Open File</button>
+            <button type="button" onClick={handleOpenFile}>Open File…</button>
             <button type="button" onClick={() => setUrlMode((value) => !value)}>Open URL</button>
+            <button type="button" onClick={handlePrint} disabled={!activeTab}>Print…</button>
           </div>
           <div className="tab-strip" role="tablist">
             {tabs.map((tab) => (
@@ -354,7 +406,6 @@ export function App() {
             <button type="button" onClick={() => setStatus(null)}>Dismiss</button>
           </div>
         )}
-        {secondaryLabel && <div className="source-label">{secondaryLabel}</div>}
       </header>
       <main className="content-area">
         {activeTab ? (
