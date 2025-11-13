@@ -1,0 +1,70 @@
+{
+  "name": "markdownviewer",
+  "version": "1.0.0",
+  "description": "Lean Electron + React viewer for local and remote markdown with Mermaid support.",
+  "type": "module",
+  "main": "dist/main/index.js",
+  "productName": "Markdown Viewer",
+  "scripts": {
+    "dev": "electron-vite dev",
+    "build": "electron-vite build",
+    "preview": "electron-vite preview",
+    "lint": "tsc --noEmit",
+    "pack": "npm run build && electron-builder --dir",
+    "dist": "npm run build && electron-builder"
+  },
+  "keywords": [
+    "electron",
+    "markdown",
+    "mermaid"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "mermaid": "^11.12.1",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "react-markdown": "^10.1.0",
+    "remark-gfm": "^4.0.1",
+    "unist-util-visit": "^5.0.0"
+  },
+  "build": {
+    "appId": "com.example.markdownviewer",
+    "files": [
+      "dist/**/*"
+    ],
+    "directories": {
+      "buildResources": "build"
+    },
+    "mac": {
+      "category": "public.app-category.productivity",
+      "target": [
+        "dmg",
+        "zip"
+      ]
+    },
+    "win": {
+      "target": [
+        "nsis",
+        "zip"
+      ]
+    },
+    "linux": {
+      "target": [
+        "AppImage",
+        "deb"
+      ],
+      "category": "Utility"
+    }
+  },
+  "devDependencies": {
+    "@types/node": "^24.10.1",
+    "@types/react": "^19.2.4",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^5.1.1",
+    "electron": "^39.1.2",
+    "electron-builder": "^26.0.12",
+    "electron-vite": "^4.0.1",
+    "typescript": "^5.9.3"
+  }
+}
