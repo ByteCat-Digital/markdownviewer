@@ -199,6 +199,20 @@ button:hover {
   font-family: 'JetBrains Mono', 'Fira Code', Menlo, monospace;
 }
 
+.markdown-pane :not(pre) > code {
+  background: rgba(148, 163, 184, 0.2);
+  color: #f8fafc;
+  padding: 0.05rem 0.35rem;
+  border-radius: 4px;
+  font-size: 0.9em;
+}
+
+/* Highlight.js theme overrides */
+.markdown-pane pre code.hljs {
+  padding: 0;
+  background: transparent;
+}
+
 .markdown-pane table {
   width: 100%;
   border-collapse: collapse;

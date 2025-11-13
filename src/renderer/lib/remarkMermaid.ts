@@ -13,7 +13,8 @@ const remarkMermaid: Plugin = () => (tree) => {
     if ((node.lang || '').toLowerCase() !== 'mermaid') return;
     node.data = {
       ...node.data,
-      isMermaid: true
+      isMermaid: true,
+      mermaidCode: node.value || ''
     };
   });
 };

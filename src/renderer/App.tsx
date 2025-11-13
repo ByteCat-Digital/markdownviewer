@@ -2,10 +2,12 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { MouseEvent as ReactMouseEvent, ReactNode } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import rehypeHighlight from 'rehype-highlight';
 import type { Components } from 'react-markdown';
 import type { MarkdownResource } from '@common/types';
 import remarkMermaid from './lib/remarkMermaid';
 import { MermaidBlock } from './components/MermaidBlock';
+import 'highlight.js/styles/atom-one-dark.css';
 import './styles/app.css';
 
 const markdownExtensions = ['.md', '.markdown', '.mdown', '.mkdn', '.mkd', '.mdx'];
@@ -263,54 +265,11 @@ export function App() {
   }, [handlePrint]);
 
   const markdownComponents = useMemo<Components>(() => {
-    type CodeRendererProps = {
-      inline?: boolean;
-      children?: ReactNode;
-      className?: string;
-      node?: {
-        value?: string;
-        lang?: string;
-        data?: { isMermaid?: boolean };
-      };
-    };
-
-    const codeRenderer = ((props: unknown) => {
-      const { inline, children, className, node } = props as CodeRendererProps;
-      const typedNode = node ?? {};
-
-      const codeValue =
-        typeof typedNode?.value === 'string'
-          ? typedNode.value
-          : typeof children === 'string'
-            ? children
-            : Array.isArray(children)
-              ? children.join('')
-              : '';
-
-      const isMermaid =
-        Boolean(typedNode?.data?.isMermaid) ||
-        (!inline &&
-          ((typedNode?.lang ?? '').toLowerCase() === 'mermaid' || className?.includes('language-mermaid')));
-
-      if (!inline && isMermaid) {
-        return <MermaidBlock code={codeValue} />;
-      }
-
-      if (inline) {
-        return <code className={className}>{children}</code>;
-      }
-      return (
-        <pre className={className}>
-          <code>{children}</code>
-        </pre>
-      );
-    }) as NonNullable<Components['code']>;
-
     return {
-    a({ href, children, ...rest }) {
-      const target = href ?? '';
-      const intercept = target && !target.startsWith('#');
-      const handleClick = (event: ReactMouseEvent<HTMLAnchorElement>) => {
+      a({ href, children, ...rest }) {
+        const target = href ?? '';
+        const intercept = target && !target.startsWith('#');
+        const handleClick = (event: ReactMouseEvent<HTMLAnchorElement>) => {
           if (!target) return;
           if (intercept) {
             event.preventDefault();
@@ -326,11 +285,31 @@ export function App() {
           </a>
         );
       },
-      code: codeRenderer
+      code(props) {
+        const { node, className, children } = props;
+
+        // Check if this is a mermaid code block
+        const match = /language-mermaid/.test(className || '');
+
+        if (match) {
+          // Get raw code from remarkMermaid plugin data, or fallback to stringified children
+          const code = (node?.data as any)?.mermaidCode || String(children);
+          return <MermaidBlock code={code.replace(/\n$/, '')} />;
+        }
+
+        // Return regular code for inline or non-mermaid blocks
+        // rehype-highlight has already processed children for syntax highlighting
+        return (
+          <code {...props} className={className}>
+            {children}
+          </code>
+        );
+      }
     };
   }, [handleLinkActivation]);
 
-  const markdownPlugins = useMemo(() => [remarkGfm, remarkMermaid], []);
+  const remarkPlugins = useMemo(() => [remarkGfm, remarkMermaid], []);
+  const rehypePlugins = useMemo(() => [[rehypeHighlight, { ignoreMissing: true, detect: true }] as any], []);
 
   const secondaryLabel = activeTab
     ? activeTab.kind === 'file'
@@ -410,7 +389,11 @@ export function App() {
       <main className="content-area">
         {activeTab ? (
           <article className="markdown-pane">
-            <ReactMarkdown remarkPlugins={markdownPlugins} components={markdownComponents}>
+            <ReactMarkdown
+              remarkPlugins={remarkPlugins}
+              rehypePlugins={rehypePlugins}
+              components={markdownComponents}
+            >
               {activeTab.content}
             </ReactMarkdown>
           </article>

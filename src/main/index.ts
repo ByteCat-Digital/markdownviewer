@@ -6,6 +6,7 @@ import {
   shell,
   Menu,
   clipboard,
+  nativeImage,
   type MenuItemConstructorOptions
 } from 'electron';
 import { readFile } from 'node:fs/promises';
@@ -64,6 +65,28 @@ const printStyles = `
     overflow: visible;
   }
 `;
+const windowsIconFile = 'cat_windows_icon.ico';
+const defaultPngIconFile = 'cat_dark_green_512x512.png';
+
+const resolveAssetPath = (...segments: string[]) => {
+  const baseDir = app.isPackaged ? process.resourcesPath : process.cwd();
+  return path.join(baseDir, ...segments);
+};
+
+const resolveIconPath = (filename: string) => {
+  const candidate = resolveAssetPath('assets', 'icons', filename);
+  return existsSync(candidate) ? candidate : null;
+};
+
+const getWindowIconPath = () =>
+  resolveIconPath(process.platform === 'win32' ? windowsIconFile : defaultPngIconFile);
+
+const getAboutIcon = () => {
+  const iconPath = resolveIconPath(defaultPngIconFile);
+  if (!iconPath) return undefined;
+  const image = nativeImage.createFromPath(iconPath);
+  return image.isEmpty() ? undefined : image;
+};
 
 type ResourceDescriptor = MarkdownResource;
 
@@ -146,11 +169,13 @@ const resolveHtml = () => {
 };
 
 async function createWindow() {
+  const iconPath = getWindowIconPath();
   mainWindow = new BrowserWindow({
     width: 1200,
     height: 800,
     show: false,
     title: 'Markdown Viewer',
+    icon: iconPath ?? undefined,
     webPreferences: {
       preload: preloadFile,
       nodeIntegration: false,
@@ -409,6 +434,7 @@ async function printDocument(payload: PrintPayload) {
 
 async function openAboutDialog() {
   const version = app.getVersion();
+  const aboutIcon = getAboutIcon();
   const detailLines = [
     `Version ${version}`,
     websiteUrl,
@@ -429,7 +455,8 @@ async function openAboutDialog() {
     cancelId: 0,
     title: 'About',
     message: 'ByteCat Digital (Pty) Ltd Markdown Reader',
-    detail: detailLines
+    detail: detailLines,
+    icon: aboutIcon
   } as const;
   const result = mainWindow
     ? await dialog.showMessageBox(mainWindow, options)
@@ -500,6 +527,26 @@ function setupMenu() {
         { type: 'separator' as const },
         isMac ? { role: 'close' as const } : { role: 'quit' as const }
       ]
+    },
+    {
+      label: 'View',
+      submenu: [
+        { role: 'reload' as const },
+        { role: 'forceReload' as const },
+        { type: 'separator' as const },
+        {
+          label: 'Toggle Developer Tools',
+          accelerator: isMac ? 'Alt+Command+I' : 'Ctrl+Shift+I',
+          click: () => {
+            if (!mainWindow || mainWindow.isDestroyed()) return;
+            if (mainWindow.webContents.isDevToolsOpened()) {
+              mainWindow.webContents.closeDevTools();
+            } else {
+              mainWindow.webContents.openDevTools({ mode: 'detach' });
+            }
+          }
+        }
+      ] as MenuItemConstructorOptions[]
     },
     {
       label: 'Window',

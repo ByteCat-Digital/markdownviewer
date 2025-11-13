@@ -4,7 +4,7 @@
   "description": "Lean Electron + React viewer for local and remote markdown with Mermaid support.",
   "type": "module",
   "main": "dist/main/index.js",
-  "productName": "Markdown Viewer",
+  "productName": "MDViewer",
   "scripts": {
     "dev": "electron-vite dev",
     "build": "electron-vite build",
@@ -25,10 +25,13 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "highlight.js": "^11.11.1",
     "mermaid": "^11.12.1",
+    "prismjs": "^1.30.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "react-markdown": "^10.1.0",
+    "rehype-highlight": "^7.0.2",
     "remark-gfm": "^4.0.1",
     "unist-util-visit": "^5.0.0"
   },
@@ -37,11 +40,18 @@
     "files": [
       "dist/**/*"
     ],
+    "extraResources": [
+      {
+        "from": "assets/icons",
+        "to": "assets/icons"
+      }
+    ],
     "directories": {
       "buildResources": "build"
     },
     "mac": {
       "category": "public.app-category.productivity",
+      "executableName": "mdviewer",
       "target": [
         "dmg",
         "zip"
@@ -51,18 +61,39 @@
       "target": [
         "nsis",
         "zip"
-      ]
+      ],
+      "icon": "assets/icons/cat_windows_icon.ico",
+      "executableName": "MDViewer",
+      "nsis": {
+        "oneClick": false,
+        "perMachine": true,
+        "allowElevation": true
+      }
     },
     "linux": {
       "target": [
         "AppImage",
         "deb"
       ],
-      "category": "Utility"
-    }
+      "category": "Utility",
+      "icon": "assets/icons/cat_dark_green_512x512.png",
+      "executableName": "mdviewer"
+    },
+    "fileAssociations": [
+      {
+        "ext": [
+          "md",
+          "markdown"
+        ],
+        "name": "Markdown Document",
+        "role": "Editor",
+        "description": "Markdown files handled by Markdown Viewer"
+      }
+    ]
   },
   "devDependencies": {
     "@types/node": "^24.10.1",
+    "@types/prismjs": "^1.26.5",
     "@types/react": "^19.2.4",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^5.1.1",
