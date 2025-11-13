@@ -10,6 +10,7 @@
     "build": "electron-vite build",
     "preview": "electron-vite preview",
     "lint": "tsc --noEmit",
+    "clean": "git clean -fdX",
     "pack": "npm run build && electron-builder --dir",
     "dist": "npm run build && electron-builder",
     "release:patch": "npm version patch",
