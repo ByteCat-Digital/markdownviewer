@@ -22,7 +22,10 @@
     "markdown",
     "mermaid"
   ],
-  "author": "",
+  "author": {
+    "name": "Johan du Plessis",
+    "email": "johan@bytecat.co.za"
+  },
   "license": "ISC",
   "dependencies": {
     "highlight.js": "^11.11.1",
@@ -63,12 +66,12 @@
         "zip"
       ],
       "icon": "assets/icons/cat_windows_icon.ico",
-      "executableName": "MDViewer",
-      "nsis": {
-        "oneClick": false,
-        "perMachine": true,
-        "allowElevation": true
-      }
+      "executableName": "MDViewer"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": true,
+      "allowElevation": true
     },
     "linux": {
       "target": [
@@ -81,10 +84,13 @@
     },
     "fileAssociations": [
       {
-        "ext": [
-          "md",
-          "markdown"
-        ],
+        "ext": "md",
+        "name": "Markdown Document",
+        "role": "Editor",
+        "description": "Markdown files handled by Markdown Viewer"
+      },
+      {
+        "ext": "markdown",
         "name": "Markdown Document",
         "role": "Editor",
         "description": "Markdown files handled by Markdown Viewer"
