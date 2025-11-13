@@ -1,6 +1,6 @@
 {
   "name": "markdownviewer",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Lean Electron + React viewer for local and remote markdown with Mermaid support.",
   "type": "module",
   "main": "dist/main/index.js",
