@@ -441,6 +441,7 @@ async function openAboutDialog() {
     githubUrl,
     '',
     'Developed with assistance from OpenAI Codex.',
+    'Code review and fixes by Claude Code.',
     '',
     'Acknowledgements:',
     dependencyAcknowledgements(),

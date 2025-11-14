@@ -38,7 +38,7 @@
     "unist-util-visit": "^5.0.0"
   },
   "build": {
-    "appId": "com.example.markdownviewer",
+    "appId": "co.bytecat.markdownviewer",
     "files": [
       "package.json",
       "out/main/**/*",
@@ -70,11 +70,12 @@
         "zip"
       ],
       "icon": "assets/icons/cat_windows_icon.ico",
-      "executableName": "MDViewer"
+      "executableName": "MarkdownViewer"
     },
     "nsis": {
       "oneClick": false,
-      "perMachine": true,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
       "allowElevation": true
     },
     "linux": {
