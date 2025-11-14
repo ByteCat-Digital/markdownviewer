@@ -30,9 +30,9 @@ npm run dev
 npm run build
 ```
 
-Artifacts land in `dist/` (main, preload, and renderer bundles). Run them with `npm run preview` (electron-vite) or package with a tool of your choice (e.g., electron-builder).
+Artifacts land in `out/` (main, preload, and renderer bundles). Run them with `npm run preview` (electron-vite) or package with a tool of your choice (e.g., electron-builder).
 
-Need a clean slate? `npm run clean` runs `git clean -fdX` to remove everything ignored by git (dist artifacts, node_modules, builder output, etc.). Use with care—it deletes all ignored files.
+Need a clean slate? `npm run clean` runs `git clean -fdX` to remove everything ignored by git (build artifacts, node_modules, release output, etc.). Use with care—it deletes all ignored files.
 
 ### Packaging installers (electron-builder)
 
